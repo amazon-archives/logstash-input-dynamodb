@@ -75,14 +75,14 @@ end
 class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
   config_name "dynamodb"
 
-  LF_DYNAMODB = "dymamodb"
-  LF_JSON_NO_BIN = "json_drop_binary"
-  LF_PLAIN = "plain"
-  LF_JSON_BIN_AS_TEXT = "json_binary_as_text"
-  VT_KEYS_ONLY = "keys_only"
-  VT_OLD_IMAGE = "old_image"
-  VT_NEW_IMAGE = "new_image"
-  VT_ALL_IMAGES = "new_and_old_images"
+  LF_DYNAMODB = "dymamodb".freeze
+  LF_JSON_NO_BIN = "json_drop_binary".freeze
+  LF_PLAIN = "plain".freeze
+  LF_JSON_BIN_AS_TEXT = "json_binary_as_text".freeze
+  VT_KEYS_ONLY = "keys_only".freeze
+  VT_OLD_IMAGE = "old_image".freeze
+  VT_NEW_IMAGE = "new_image".freeze
+  VT_ALL_IMAGES = "new_and_old_images".freeze
 
   default :codec, 'json'
 
@@ -129,7 +129,6 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
   # Number of threads to use when scanning the specified table
   config :number_of_scan_threads, :validate => :number, :default => 1
 
-
   # Number of threads to write to the logstash queue when scanning the table
   config :number_of_write_threads, :validate => :number, :default => 1
 
@@ -155,11 +154,6 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
 
   public
   def register
-    if not LogStash::Environment.jruby?
-      raise(LogStash::PluginLoadingError, "KCL requires JRuby for streams processing")
-    end # if not LogStash::Environment.jruby?
-
-
     LogStash::Logger.setup_log4j(@logger)
 
     @host = Socket.gethostname
@@ -168,10 +162,10 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
     @credentials = build_credentials()
     @logger.info("Checkpointer: " + @checkpointer)
 
-    if @perform_scan and @view_type === VT_OLD_IMAGE
+    if @perform_scan and @view_type == VT_OLD_IMAGE
       raise(LogStash::ConfigurationError, "Cannot perform scan with view type: " + @view_type + " configuration")
     end
-    if @view_type === VT_ALL_IMAGES and (not @log_format === LF_PLAIN)
+    if @view_type == VT_ALL_IMAGES and (not @log_format == LF_PLAIN)
       raise(LogStash::ConfigurationError, "Cannot show view_type: " + @view_type + ", with log_format: " + @log_format)
     end
 
@@ -197,67 +191,6 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
       setup_stream
     end # unless @perform_stream
   end # def register
-
-  private
-  def setup_stream
-    worker_id = SecureRandom.uuid()
-    @logger.info("WorkerId: " + worker_id)
-
-    dynamodb_streams_client = AmazonDynamoDB::AmazonDynamoDBStreamsClient.new(@credentials)
-    adapter = Java::ComAmazonawsServicesDynamodbv2Streamsadapter::AmazonDynamoDBStreamsAdapterClient.new(@credentials)
-    if not @streams_endpoint.nil?
-      adapter.setEndpoint(@streams_endpoint)
-      dynamodb_streams_client.setEndpoint(@streams_endpoint)
-      @logger.info("DynamoDB Streams endpoint: " + @streams_endpoint)
-    else
-      raise(LogStash::ConfigurationError, "Cannot stream without a configured streams endpoint")
-    end # if not @streams_endpoint.to_s.empty?
-
-    stream_arn = nil
-    begin
-      stream_arn = @table_description.getLatestStreamArn()
-      stream_description = dynamodb_streams_client.describeStream(AmazonDynamoDB::DescribeStreamRequest.new() \
-        .withStreamArn(stream_arn)).getStreamDescription()
-
-      stream_status = stream_description.getStreamStatus()
-
-      stream_view_type = stream_description.getStreamViewType().to_s.downcase
-      unless (stream_view_type === @view_type or @view_type === VT_KEYS_ONLY or stream_view_type === VT_ALL_IMAGES)
-        raise(LogStash::ConfigurationError, "Cannot stream " + @view_type + " when stream is setup for " + stream_view_type)
-      end
-
-      while stream_status === "ENABLING"
-        if(stream_status === "ENABLING")
-          @logger.info("Sleeping until stream is enabled")
-          sleep(1)
-        end # if stream_status === "ENABLING"
-        stream_description = dynamodb_streams_client.describeStream(AmazonDynamoDB::DescribeStreamRequest.new() \
-          .withStreamArn(stream_arn)).getStreamDescription()
-        stream_status = stream_description.getStreamStatus()
-      end # while not active
-
-      if not stream_status === "ENABLED"
-        raise(LogStash::PluginLoadingError, "No streams are enabled")
-      end # if not active
-      @logger.info("Stream Id: " + stream_arn)
-    rescue AmazonDynamoDB::ResourceNotFoundException => rnfe
-      raise(LogStash::PluginLoadingError, rnfe.message)
-    rescue AmazonClientException => ace
-      raise(LogStash::ConfigurationError, "AWS credentials invalid or not found in the provider chain\n" + ace.message)
-    end # begin
-
-    kcl_config = KCL::KinesisClientLibConfiguration.new(@checkpointer, stream_arn, @credentials, worker_id) \
-      .withInitialPositionInStream(KCL::InitialPositionInStream::TRIM_HORIZON)
-		cloudwatch_client = nil
-    if @publish_metrics
-      cloudwatch_client = CloudWatch::AmazonCloudWatchClient.new(@credentials)
-    else
-      kclMetricsLogger = LogManager.getLogger("com.amazonaws.services.kinesis.metrics")
-      kclMetricsLogger.setAdditivity(false)
-      kclMetricsLogger.setLevel(Level::OFF)
-    end # if @publish_metrics
-    @worker = KCL::Worker.new(LogStashRecordProcessorFactory.new(@queue), kcl_config, adapter, @dynamodb_client, cloudwatch_client)
-  end # def setup_stream
 
   public
   def run(logstash_queue)
@@ -288,6 +221,67 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
   end # def run
 
   private
+  def setup_stream
+    worker_id = SecureRandom.uuid()
+    @logger.info("WorkerId: " + worker_id)
+
+    dynamodb_streams_client = AmazonDynamoDB::AmazonDynamoDBStreamsClient.new(@credentials)
+    adapter = Java::ComAmazonawsServicesDynamodbv2Streamsadapter::AmazonDynamoDBStreamsAdapterClient.new(@credentials)
+    if not @streams_endpoint.nil?
+      adapter.setEndpoint(@streams_endpoint)
+      dynamodb_streams_client.setEndpoint(@streams_endpoint)
+      @logger.info("DynamoDB Streams endpoint: " + @streams_endpoint)
+    else
+      raise(LogStash::ConfigurationError, "Cannot stream without a configured streams endpoint")
+    end # if not @streams_endpoint.to_s.empty?
+
+    stream_arn = nil
+    begin
+      stream_arn = @table_description.getLatestStreamArn()
+      stream_description = dynamodb_streams_client.describeStream(AmazonDynamoDB::DescribeStreamRequest.new() \
+        .withStreamArn(stream_arn)).getStreamDescription()
+
+      stream_status = stream_description.getStreamStatus()
+
+      stream_view_type = stream_description.getStreamViewType().to_s.downcase
+      unless (stream_view_type == @view_type or @view_type == VT_KEYS_ONLY or stream_view_type == VT_ALL_IMAGES)
+        raise(LogStash::ConfigurationError, "Cannot stream " + @view_type + " when stream is setup for " + stream_view_type)
+      end
+
+      while stream_status == "ENABLING"
+        if(stream_status == "ENABLING")
+          @logger.info("Sleeping until stream is enabled")
+          sleep(1)
+        end # if stream_status == "ENABLING"
+        stream_description = dynamodb_streams_client.describeStream(AmazonDynamoDB::DescribeStreamRequest.new() \
+          .withStreamArn(stream_arn)).getStreamDescription()
+        stream_status = stream_description.getStreamStatus()
+      end # while not active
+
+      if not stream_status == "ENABLED"
+        raise(LogStash::PluginLoadingError, "No streams are enabled")
+      end # if not active
+      @logger.info("Stream Id: " + stream_arn)
+    rescue AmazonDynamoDB::ResourceNotFoundException => rnfe
+      raise(LogStash::PluginLoadingError, rnfe.message)
+    rescue AmazonClientException => ace
+      raise(LogStash::ConfigurationError, "AWS credentials invalid or not found in the provider chain\n" + ace.message)
+    end # begin
+
+    kcl_config = KCL::KinesisClientLibConfiguration.new(@checkpointer, stream_arn, @credentials, worker_id) \
+      .withInitialPositionInStream(KCL::InitialPositionInStream::TRIM_HORIZON)
+		cloudwatch_client = nil
+    if @publish_metrics
+      cloudwatch_client = CloudWatch::AmazonCloudWatchClient.new(@credentials)
+    else
+      kclMetricsLogger = LogManager.getLogger("com.amazonaws.services.kinesis.metrics")
+      kclMetricsLogger.setAdditivity(false)
+      kclMetricsLogger.setLevel(Level::OFF)
+    end # if @publish_metrics
+    @worker = KCL::Worker.new(LogStashRecordProcessorFactory.new(@queue), kcl_config, adapter, @dynamodb_client, cloudwatch_client)
+  end # def setup_stream
+
+  private
   def scan(logstash_queue)
     @logger.info("Starting scan...")
     @logstash_writer = DynamoDBBootstrap::BlockingQueueConsumer.new(@number_of_write_threads)
@@ -298,7 +292,7 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
     scan_queue = @logstash_writer.getQueue()
     while true
       event = scan_queue.take()
-      if event.getEntry().nil? and event.getSize() === -1
+      if event.getEntry().nil? and event.getSize() == -1
         break
       end # if event.isEmpty()
       queue_event(@parser.parse_scan(event.getEntry(), event.getSize()), logstash_queue, @host)

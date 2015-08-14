@@ -58,7 +58,7 @@ class DynamoDBLogParser
     @key_schema.each { |x|
       @hash_template["dynamodb"]["keys"][x] = data_hash[x]
     }
-    unless @view_type === "keys_only"
+    unless @view_type == "keys_only"
       size_bytes += new_image_size
       @hash_template["dynamodb"]["newImage"] = data_hash
     end
@@ -67,6 +67,11 @@ class DynamoDBLogParser
     @hash_template["dynamodb"]["streamViewType"] = @view_type.upcase
 
     return parse_view_type(@hash_template)
+  end
+
+  public
+  def parse_stream(log)
+    return parse_view_type(JSON.parse(@mapper.writeValueAsString(log))["internalObject"])
   end
 
   private
@@ -88,14 +93,9 @@ class DynamoDBLogParser
     return key_size
   end
 
-  public
-  def parse_stream(log)
-    return parse_view_type(JSON.parse(@mapper.writeValueAsString(log))["internalObject"])
-  end
-
   private
   def parse_view_type(hash)
-    if @log_format === LogStash::Inputs::DynamoDB::LF_PLAIN
+    if @log_format == LogStash::Inputs::DynamoDB::LF_PLAIN
       return hash.to_json
     end
     case @view_type
@@ -110,7 +110,7 @@ class DynamoDBLogParser
 
   private
   def parse_format(hash)
-    if @log_format === LogStash::Inputs::DynamoDB::LF_DYNAMODB
+    if @log_format == LogStash::Inputs::DynamoDB::LF_DYNAMODB
       return hash.to_json
     else
       return dynamodb_to_json(hash)
@@ -128,7 +128,7 @@ class DynamoDBLogParser
     hash.each do |k, v|
       dynamodb_key = v.keys.first
       dynamodb_value = v.values.first
-      if @log_format === LogStash::Inputs::DynamoDB::LF_JSON_NO_BIN and (dynamodb_key === "BS" or dynamodb_key === "B")
+      if @log_format == LogStash::Inputs::DynamoDB::LF_JSON_NO_BIN and (dynamodb_key == "BS" or dynamodb_key == "B")
         keys_to_delete.push(k) # remove binary values and binary sets
         next
       end
