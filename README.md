@@ -69,10 +69,16 @@ At this point any modifications to the plugin code will be applied to this local
 
 You can use the same **2.1** method to run your plugin in an installed Logstash by editing its `Gemfile` and pointing the `:path` to your local plugin development directory or you can build the gem and install it using:
 
+- Install all dependencies of the gem
+```sh
+bundle install
+```
+
 - Build your plugin gem
 ```sh
 gem build logstash-filter-awesome.gemspec
 ```
+
 - Install the plugin from the Logstash home
 ```sh
 bin/plugin install /your/local/plugin/logstash-filter-awesome.gem

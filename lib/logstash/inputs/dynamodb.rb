@@ -49,6 +49,7 @@ java_import "com.fasterxml.jackson.annotation.JsonInclude"
 java_import "com.amazonaws.regions.RegionUtils"
 
 module AmazonDynamoDB
+  include_package "com.amazonaws"
   include_package "com.amazonaws.services.dynamodbv2"
   include_package "com.amazonaws.services.dynamodbv2.streamsadapter"
   include_package "com.amazonaws.services.dynamodbv2.model"
@@ -74,6 +75,8 @@ end
 #and then consume streams and push those records into Logstash
 class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
   config_name "dynamodb"
+
+  USER_AGENT = " logstash-input-dynamodb/1.0.0".freeze
 
   LF_DYNAMODB = "dymamodb".freeze
   LF_JSON_NO_BIN = "json_drop_binary".freeze
@@ -170,7 +173,9 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
     end
 
     #Create DynamoDB Client
-    @dynamodb_client = AmazonDynamoDB::AmazonDynamoDBClient.new(@credentials)
+    @client_configuration = AmazonDynamoDB::ClientConfiguration.new()
+    @client_configuration.setUserAgent(@client_configuration.getUserAgent() + USER_AGENT)
+    @dynamodb_client = AmazonDynamoDB::AmazonDynamoDBClient.new(@credentials, @client_configuration)
 
     @logger.info(@dynamodb_client.to_s)
 
@@ -225,7 +230,7 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
     worker_id = SecureRandom.uuid()
     @logger.info("WorkerId: " + worker_id)
 
-    dynamodb_streams_client = AmazonDynamoDB::AmazonDynamoDBStreamsClient.new(@credentials)
+    dynamodb_streams_client = AmazonDynamoDB::AmazonDynamoDBStreamsClient.new(@credentials, @client_configuration)
     adapter = Java::ComAmazonawsServicesDynamodbv2Streamsadapter::AmazonDynamoDBStreamsAdapterClient.new(@credentials)
     if not @streams_endpoint.nil?
       adapter.setEndpoint(@streams_endpoint)
