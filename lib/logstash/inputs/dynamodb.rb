@@ -22,26 +22,9 @@ require "socket"
 require_relative "LogStashRecordProcessorFactory"
 require_relative "DynamoDBLogParser"
 
-#Java Dependencies: KCL, Streams Adapter, Log4j, Preview AWS SDK
-require 'java'
-begin
-  require 'jar-dependencies'
-  require_jar( 'com.amazonaws', 'amazon-kinesis-client', '1.6.0' )
-  require_jar( 'log4j', 'log4j', '1.2.17' )
-  require_jar( 'com.google.guava', 'guava', '15.0' )
-  require_jar( 'com.amazonaws', 'aws-java-sdk-core', '1.10.10' )
-  require_jar( 'com.amazonaws', 'aws-java-sdk-cloudwatch', '1.10.8' )
-  require_jar( 'com.amazonaws', 'aws-java-sdk-dynamodb', '1.10.10' )
-  require_jar( 'com.amazonaws', 'aws-java-sdk-kinesis', '1.10.8' )
-  require_jar( 'com.amazonaws', 'dynamodb-streams-kinesis-adapter', '1.0.0' )
-  require_jar( 'com.amazonaws', 'dynamodb-import-export-tool', '1.0.0' )
-  require_jar( 'commons-logging', 'commons-logging', '1.1.3')
-  require_jar( 'org.apache.httpcomponents', 'httpclient', '4.3.6')
-  require_jar( 'org.apache.httpcomponents', 'httpcore', '4.3.3')
-  require_jar( 'com.fasterxml.jackson.core', 'jackson-databind', '2.5.3' )
-  require_jar( 'joda-time', 'joda-time', '2.8.1')
-end
+require "logstash-input-dynamodb_jars"
 
+require 'java'
 java_import "com.amazonaws.AmazonClientException"
 java_import "org.apache.log4j.LogManager"
 java_import "org.apache.log4j.Level"
@@ -145,7 +128,7 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
 
   public
   def build_credentials
-    if not @aws_access_key_id.to_s.empty? and not @aws_secret_access_key.to_s.empty?
+    if !@aws_access_key_id.to_s.empty? and !@aws_secret_access_key.to_s.empty?
       @logger.info("Using static credentials: " + @aws_access_key_id + ", " + @aws_secret_access_key)
       basic = AmazonCredentials::BasicAWSCredentials.new(@aws_access_key_id, @aws_secret_access_key)
       return AmazonCredentials::StaticCredentialsProvider.new(basic)
@@ -168,7 +151,7 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
     if @perform_scan and @view_type == VT_OLD_IMAGE
       raise(LogStash::ConfigurationError, "Cannot perform scan with view type: " + @view_type + " configuration")
     end
-    if @view_type == VT_ALL_IMAGES and (not @log_format == LF_PLAIN)
+    if @view_type == VT_ALL_IMAGES and !(@log_format == LF_PLAIN)
       raise(LogStash::ConfigurationError, "Cannot show view_type: " + @view_type + ", with log_format: " + @log_format)
     end
 
@@ -190,7 +173,7 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
     end
     region = RegionUtils.getRegionByEndpoint(@endpoint)
 
-    @parser ||= DynamoDBLogParser.new(@view_type, @log_format, @key_schema, region)
+    @parser ||= Logstash::Inputs::DynamoDB::DynamoDBLogParser.new(@view_type, @log_format, @key_schema, region)
 
     if @perform_stream
       setup_stream
@@ -232,7 +215,7 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
 
     dynamodb_streams_client = AmazonDynamoDB::AmazonDynamoDBStreamsClient.new(@credentials, @client_configuration)
     adapter = Java::ComAmazonawsServicesDynamodbv2Streamsadapter::AmazonDynamoDBStreamsAdapterClient.new(@credentials)
-    if not @streams_endpoint.nil?
+    if !@streams_endpoint.nil?
       adapter.setEndpoint(@streams_endpoint)
       dynamodb_streams_client.setEndpoint(@streams_endpoint)
       @logger.info("DynamoDB Streams endpoint: " + @streams_endpoint)
@@ -263,7 +246,7 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
         stream_status = stream_description.getStreamStatus()
       end # while not active
 
-      if not stream_status == "ENABLED"
+      if !(stream_status == "ENABLED")
         raise(LogStash::PluginLoadingError, "No streams are enabled")
       end # if not active
       @logger.info("Stream Id: " + stream_arn)
@@ -283,7 +266,7 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
       kclMetricsLogger.setAdditivity(false)
       kclMetricsLogger.setLevel(Level::OFF)
     end # if @publish_metrics
-    @worker = KCL::Worker.new(LogStashRecordProcessorFactory.new(@queue), kcl_config, adapter, @dynamodb_client, cloudwatch_client)
+    @worker = KCL::Worker.new(Logstash::Inputs::DynamoDB::LogStashRecordProcessorFactory.new(@queue), kcl_config, adapter, @dynamodb_client, cloudwatch_client)
   end # def setup_stream
 
   private

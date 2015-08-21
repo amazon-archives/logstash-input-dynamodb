@@ -8,6 +8,7 @@ Gem::Specification.new do |s|
   s.email = 'dynamodb-interest@amazon.com'
   s.homepage = "https://github.com/logstash-plugins/logstash-input-dynamodb"
   s.require_paths = ["lib"]
+  s.platform = 'java'
 
   # Files
   s.files = `git ls-files`.split($\)

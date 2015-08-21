@@ -14,24 +14,16 @@
 #See the License for the specific language governing permissions and
 #limitations under the License.
 #
-require "logstash/devutils/rspec/spec_helper"
-require "rspec/expectations"
-require "rspec/mocks"
-require "mocha"
-
-RSpec.configure do |config|
-  config.mock_with :mocha
-end
-
+require "spec/spec_helper"
 
 describe 'inputs/LogStashRecordProcessor' do
   before(:each) do
     @queue = SizedQueue.new(20)
-    @processor = LogStashRecordProcessor.new(@queue)
+    @processor = Logstash::Inputs::DynamoDB::LogStashRecordProcessor.new(@queue)
   end
 
   it "should call setShardId when being called with a String" do
-    processor_with_shard = LogStashRecordProcessor.new("test shardId")
+    processor_with_shard = Logstash::Inputs::DynamoDB::LogStashRecordProcessor.new("test shardId")
     expect(processor_with_shard.shard_id).to eq("test shardId")
   end
 
@@ -70,9 +62,9 @@ describe 'inputs/LogStashRecordProcessorFactory' do
 
   it "should create a new factory correctly and create a new LogStashRecordProcessor when called upon" do
     queue = SizedQueue.new(20)
-    factory = LogStashRecordProcessorFactory.new(queue)
+    factory = Logstash::Inputs::DynamoDB::LogStashRecordProcessorFactory.new(queue)
     processor = factory.create_processor
-    expect(processor).to be_an_instance_of(LogStashRecordProcessor)
+    expect(processor).to be_an_instance_of(Logstash::Inputs::DynamoDB::LogStashRecordProcessor)
   end
 
 end

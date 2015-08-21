@@ -16,24 +16,28 @@
 #
 require 'java'
 require_relative "LogStashRecordProcessor"
-begin
-  require 'jar-dependencies'
-  require_jar( 'com.amazonaws', 'amazon-kinesis-client', '1.6.0' )
-end
+
+require "logstash-input-dynamodb_jars"
 
 module KCL
   include_package "com.amazonaws.services.kinesis.clientlibrary.interfaces"
 end
 
-class LogStashRecordProcessorFactory
-  include KCL::IRecordProcessorFactory
+module Logstash
+  module Inputs
+    module DynamoDB
+      class LogStashRecordProcessorFactory
+        include KCL::IRecordProcessorFactory
 
-  def initialize(queue)
-    @queue ||= queue
+        def initialize(queue)
+          @queue ||= queue
+        end
+
+        def create_processor
+          return Logstash::Inputs::DynamoDB::LogStashRecordProcessor.new(@queue)
+        end
+
+      end
+    end
   end
-
-  def create_processor
-    return LogStashRecordProcessor.new(@queue)
-  end
-
 end

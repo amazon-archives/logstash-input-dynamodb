@@ -14,15 +14,7 @@
 #See the License for the specific language governing permissions and
 #limitations under the License.
 #
-require "logstash/devutils/rspec/spec_helper"
-require "logstash/inputs/dynamodb"
-require "rspec/expectations"
-require "rspec/mocks"
-require "mocha"
-
-RSpec.configure do |config|
-  config.mock_with :mocha
-end
+require "spec/spec_helper"
 
 class LogStash::Inputs::TestDynamoDB < LogStash::Inputs::DynamoDB
   default :codec, 'json'
@@ -36,7 +28,7 @@ class LogStash::Inputs::TestDynamoDB < LogStash::Inputs::DynamoDB
     super(event, logstash_queue, host)
     # Add additional item to plugin's queue to ensure run() flushes queue before shutting down.
     # Queue the event and then shutdown, otherwise the threads would run forever
-    if shutdown_count === 0
+    if shutdown_count == 0
       @shutdown_count += 1
       @queue << "additional event stuck in queue during shutdown"
       raise LogStash::ShutdownSignal
@@ -61,10 +53,6 @@ class TestParser
 end
 
 describe 'inputs/dynamodb' do
-  let (:empty_config) {{}}
-  let (:tablename) {{'table_name' => 'test tablename', 'view_type' => "new_and_old_images", "endpoint" => "some endpoint"}}
-  let (:invalid_aws_credentials_config) {{'table_name' => 'test tablename', "endpoint" => "some endpoint", 'aws_access_key_id' => 'invalid', 'aws_secret_access_key' => 'invalid_also', 'view_type' => "new_and_old_images", "streams_endpoint" => "some streams endpoint"}}
-  let (:invalid_aws_credentials_config_no_endpoints) {{'table_name' => 'test tablename', 'aws_access_key_id' => 'invalid', 'aws_secret_access_key' => 'invalid_also', 'view_type' => "new_and_old_images"}}
   let (:dynamodb_client) {mock("AmazonDynamoDB::AmazonDynamoDBClient")}
   let (:dynamodb_streams_client) {mock("AmazonDynamoDB::AmazonDynamoDBStreamsClient")}
   let (:adapter) {mock("AmazonDynamoDB::AmazonDynamoDBStreamsAdapterClient")}
@@ -75,7 +63,7 @@ describe 'inputs/dynamodb' do
     AmazonDynamoDB::AmazonDynamoDBClient.expects(:new).returns(dynamodb_client)
     AmazonDynamoDB::AmazonDynamoDBStreamsClient.expects(:new).returns(dynamodb_streams_client)
     AmazonDynamoDB::AmazonDynamoDBStreamsAdapterClient.expects(:new).returns(adapter)
-    DynamoDBLogParser.expects(:new).returns(TestParser.new())
+    Logstash::Inputs::DynamoDB::DynamoDBLogParser.expects(:new).returns(TestParser.new())
     RegionUtils.expects(:getRegionByEndpoint).with("some endpoint").returns("some region")
 
     mock_table_description = stub
@@ -110,18 +98,21 @@ describe 'inputs/dynamodb' do
   end
 
 	it "should need endpoint" do
-    tablename.delete("endpoint")
-    expect {LogStash::Plugin.lookup("input", "dynamodb").new(tablename)}.to raise_error(LogStash::ConfigurationError)
+    config = tablename
+    config.delete("endpoint")
+    expect {LogStash::Plugin.lookup("input", "dynamodb").new(config)}.to raise_error(LogStash::ConfigurationError)
   end
 
 	it "should need table_name config" do
-    tablename.delete("table_name")
-    expect {LogStash::Plugin.lookup("input", "dynamodb").new(tablename)}.to raise_error(LogStash::ConfigurationError)
+    config = tablename
+    config.delete("table_name")
+    expect {LogStash::Plugin.lookup("input", "dynamodb").new(config)}.to raise_error(LogStash::ConfigurationError)
   end
 
 	it "should need view_type config" do
-    tablename.delete("view_type")
-    expect {LogStash::Plugin.lookup("input", "dynamodb").new(tablename)}.to raise_error(LogStash::ConfigurationError)
+    config = tablename
+    config.delete("view_type")
+    expect {LogStash::Plugin.lookup("input", "dynamodb").new(config)}.to raise_error(LogStash::ConfigurationError)
   end
 
   it "should use default AWS credentials " do

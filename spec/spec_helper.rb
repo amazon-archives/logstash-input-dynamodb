@@ -94,3 +94,41 @@ RSpec.configure do |config|
   Kernel.srand config.seed
 =end
 end
+
+require "logstash/devutils/rspec/spec_helper"
+require "logstash/inputs/DynamoDBLogParser"
+require "logstash/inputs/dynamodb"
+require "rspec/expectations"
+require "rspec/mocks"
+require "mocha"
+require "java"
+
+RSpec.configure do |config|
+  config.mock_with :mocha
+end
+
+def empty_config
+  {}
+end
+
+def tablename
+  {'table_name' => 'test tablename', 'view_type' => "new_and_old_images", "endpoint" => "some endpoint"}
+end
+def invalid_aws_credentials_config
+  {'table_name' => 'test tablename', "endpoint" => "some endpoint", 'aws_access_key_id' => 'invalid', 'aws_secret_access_key' => 'invalid_also', 'view_type' => "new_and_old_images", "streams_endpoint" => "some streams endpoint"}
+end
+def invalid_aws_credentials_config_no_endpoints
+  {'table_name' => 'test tablename', 'aws_access_key_id' => 'invalid', 'aws_secret_access_key' => 'invalid_also', 'view_type' => "new_and_old_images"}
+end
+def key_schema
+  ["TBCZDPHPXUTOTYGP", "some bin key"]
+end
+def sample_scan_result
+  {"TBCZDPHPXUTOTYGP" => {"S" => "sampleString"}, "some bin key" => {"B" => "actualbinval"}}
+end
+def sample_stream_result
+  {"internalObject" => {"eventID" => "0","eventName" => "INSERT","eventVersion" => "1.0", \
+    "eventSource" => "aws:dynamodb","awsRegion" => "us-west-1","dynamodb" => {"keys" => {"TBCZDPHPXUTOTYGP" => {"S" => "sampleString"}, \
+    "some bin key" => {"B" => "actualbinval"}}, "newImage" => {"TBCZDPHPXUTOTYGP" => {"S" => "sampleString"}, \
+    "some bin key" => {"B" => "actualbinval"}},"sequenceNumber" => "0","sizeBytes" => 48,"streamViewType" => LogStash::Inputs::DynamoDB::VT_ALL_IMAGES.upcase}}}
+end
