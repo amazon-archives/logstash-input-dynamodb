@@ -1,177 +1,217 @@
-# Logstash Plugin
+# Logstash Plugin for Amazon DynamoDB
 
-NOTE: CONFIGURATION ON RUNNING THE INPUT PLUGIN FOR DYNAMODB LOOK AT THE BOTTOM
+The Logstash plugin for Amazon DynamoDB gives you a nearly real-time view of the data in your DynamoDB table. The Logstash plugin for DynamoDB uses DynamoDB Streams to parse and output data as it is added to a DynamoDB table. After you install and activate the Logstash plugin for DynamoDB, it scans the data in the specified table, and then it starts consuming your updates using Streams and then outputs them to Elasticsearch, or a Logstash output of your choice.
 
-This is a plugin for [Logstash](https://github.com/elasticsearch/logstash).
+Logstash is a data pipeline service that processes data, parses data, and then outputs it to a selected location in a selected format. Elasticsearch is a distributed, full-text search server. For more information about Logstash and Elasticsearch, go to https://www.elastic.co/products/elasticsearch.
 
-It is fully free and fully open source. The license is Apache 2.0, meaning you are pretty much free to use it however you want in whatever way.
+## The following sections walk you through the process to:
 
-## Documentation
+1. Create a DynamoDB table and enable a new stream on the table.
+2. Download, build, and install the Logstash plugin for DynamoDB.
+3. Configure Logstash to output to Elasticsearch and the command line.
+4. Run the Logstash plugin for DynamoDB.
+5. Test Logstash by adding DynamoDB items to the table.
 
-Logstash provides infrastructure to automatically generate documentation for this plugin. We use the asciidoc format to write documentation so any comments in the source code will be first converted into asciidoc and then into html. All plugin documentation are placed under one [central location](http://www.elasticsearch.org/guide/en/logstash/current/).
+When this process is finished, you can search your data in the Elasticsearch cluster.
 
-- For formatting code or config example, you can use the asciidoc `[source,ruby]` directive
-- For more asciidoc formatting tips, see the excellent reference here https://github.com/elasticsearch/docs#asciidoc-guide
+### Prerequisites
 
-## Need Help?
+**The following items are required to use the Logstash plugin for Amazon DynamoDB:**
 
-Need help? Try #logstash on freenode IRC or the logstash-users@googlegroups.com mailing list.
+1. Amazon Web Services (AWS) account with DynamoDB
+2. A running Elasticsearch cluster—To download Elasticsearch, go to https://www.elastic.co/products/elasticsearch.
+3. Logstash—To download Logstash, go to https://github.com/awslabs/logstash-input-dynamodb.
+4. JRuby—To download JRuby, go to http://jruby.org/download.
+5. Git—To download Git, go to http://git-scm.com/downloads
+6. Apache Maven—To get Apache Maven, go to http://maven.apache.org/.
 
-## Developing
+### Before You Begin: Create a Source Table
 
-### 1. Plugin Developement and Testing
+In this step, you will create a DynamoDB table with DynamoDB Streams enabled. This will be the source table and writes to this table will be processed by the Logstash plugin for DynamoDB.
 
-#### Code
-- To get started, you'll need JRuby with the Bundler gem installed.
+**To create the source table**
 
-- Create a new plugin or clone and existing from the GitHub [logstash-plugins](https://github.com/logstash-plugins) organization. We also provide [example plugins](https://github.com/logstash-plugins?query=example).
+1. Open the DynamoDB console at https://console.aws.amazon.com/dynamodb/.
+2. Choose **Create Table**.
+3. On the **Create Table** page, enter the following settings:
+   1. **Table Name** — SourceTable
+   2. **Primary Key Type** — Hash
+   3. **Hash attribute data type** — Number
+   4. **Hash Attribute Name** — Id
+   5. Choose **Continue**.
+4. On the **Add Indexes** page, choose **Continue**. You will not need any indexes for this exercise.
+5. On the **Provisioned Throughput** page, choose **Continue**.
+6. On the **Additional Options** page, do the following:
+    1. Select **Enable Streams**, and then set the **View Type** to **New and Old Images**.
+    2. Clear **Use Basic Alarms**. You will not need alarms for this exercise.
+    3. When you are ready, choose **Continue**.
+7. On the **Summary** page, choose **Create**.
 
-- Install dependencies
-```sh
-bundle install
+The source table will be created within a few minutes.
+
+### Setting Up the Logstash Plugin for Amazon DynamoDB
+
+To use the Logstash plugin for DynamoDB, you need to build, install, run the plugin, and then you can test it.
+
+**IMPORTANT: in order to successfully build and install Logstash, you must have previously installed ```MAVEN``` to satisfy jar dependencies, and ```JRUBY``` to build and run the logstash gem.**
+
+**To build the Logstash plugin for DynamoDB**
+
+At the command prompt, change to the directory where you want to install the Logstash plugin for DynamoDB and demo project.
+
+In the directory where you want the Git project, clone the Git project:
+
+```
+git clone https://github.com/awslabs/logstash-input-dynamodb.git
 ```
 
-#### Test
+**Install the Bundler gem by typing the following:**
 
-- Update your dependencies
-
-#####TODO: NOT DONE YET
-```sh
-bundle install
+```
+jruby -S gem install bundler
 ```
 
-- Run tests
+**NOTE: The ```jruby -S``` syntax ensures that our gem is installed with ```jruby``` and not ```ruby```**
 
-```sh
-bundle exec rspec
+The Bundler gem checks dependencies for Ruby gems and installs them for you.
+
+To install the dependencies for the Logstash plugin for DynamoDB, type the following command:
+
+```
+jruby -S bundle install
 ```
 
-### 2. Running your unpublished Plugin in Logstash
+To build the gem, type the following command:
 
-#### 2.1 Run in a local Logstash clone
-
-##### TODO need to figure out the local plugin path.  For now use 'gem build logstash-input-dynamodbstreams.gemspec' and add the absolute path of this the gem created to the Gemfile of the logstash app.
-- Edit Logstash `Gemfile` and add the local plugin path, for example:
-```ruby
-gem "logstash-filter-awesome", :path => "/your/local/logstash-filter-awesome"
 ```
-- Install plugin
-```sh
-bin/plugin install --no-verify
-```
-- Run Logstash with your plugin
-```sh
-bin/logstash -e 'filter {awesome {}}'
-```
-At this point any modifications to the plugin code will be applied to this local Logstash setup. After modifying the plugin, simply rerun Logstash.
-
-#### 2.2 Run in an installed Logstash
-
-You can use the same **2.1** method to run your plugin in an installed Logstash by editing its `Gemfile` and pointing the `:path` to your local plugin development directory or you can build the gem and install it using:
-
-- Install all dependencies of the gem
-```sh
-bundle install
+jruby -S gem build logstash-input-dynamodb.gemspec
 ```
 
-- Build your plugin gem
-```sh
-gem build logstash-filter-awesome.gemspec
+To install the gem, in the logstash-dynamodb-input folder type:
+
+```
+jruby -S gem install --local logstash-input-dynamodb-1.0.0-java.gem
 ```
 
-- Install the plugin from the Logstash home
-```sh
-bin/plugin install /your/local/plugin/logstash-filter-awesome.gem
+### To install the Logstash plugin for DynamoDB
+
+Now that you have built the plugin gem, you can install it.
+
+Change directories to your local Logstash directory.
+
+In the Logstash directory, open the Gemfile file in a text editor and add the following line.
+
 ```
-- Start Logstash and proceed to test the plugin
+gem "logstash-input-dynamodb"
+```
 
-## Contributing
+To install the plugin, in your logstash folder type the command:
 
-All contributions are welcome: ideas, patches, documentation, bug reports, complaints, and even something you drew up on a napkin.
+```
+bin/plugin install --no-verify logstash-input-dynamodb
+```
 
-Programming is not a required skill. Whatever you've seen about open source and maintainers or community members  saying "send patches or die" - you will not see that here.
+To list all the installed plugins type the following command:
 
-It is more important to the community that you are able to contribute.
+```
+bin/plugin list
+```
 
-For more information about contributing, see the [CONTRIBUTING](https://github.com/elasticsearch/logstash/blob/master/CONTRIBUTING.md) file.
+If the logstash-output-elasticsearch or logstash-output-stdout plugins are not listed you need to install them. For instructions on installing plugins, go to the Working with Plugins page in the Logstash documentation.
 
-#Configuration for DynamoDB Logstash plugin
+### Running the Logstash Plugin for Amazon DynamoDB
 
-To run the DynamoDB Logstash plugin simply add a configuration following the below documentation.
+**NOTE: First, make sure you have *Enabled Streams* (see above) for your DynamoDB table(s) before running logstash.  Logstash for DynamoDB requires that each table you are logging from have a streams enabled to work.**
 
-An example configuration:
-input {
-    dynamodb {
-        table_name => "My_DynamoDB_Table"
-        endpoint => "dynamodb.us-west-1.amazonaws.com"
-        streams_endpoint => "streams.dynamodb.us-west-1.amazonaws.com"
-        aws_access_key_id => "my aws access key"
-        aws_secret_access_key => "my aws secret access key"
-        perform_scan => true
-        perform_stream => true
-        read_ops => 100
-        number_of_write_threads => 8
-        number_of_scan_threads => 8
-        log_format => "plain"
-        view_type => "new_and_old_images"
-    }
+In the local Logstash directory create a ```logstash-dynamodb.conf``` file with the following contents:
+
+```
+input { 
+    dynamodb{
+      endpoint => "dynamodb.us-east-1.amazonaws.com" 
+      streams_endpoint => "streams.dynamodb.us-east-1.amazonaws.com" 
+      view_type => "new_and_old_images" 
+      aws_access_key_id => "<access_key_id>" 
+      aws_secret_access_key => "<secret_key>" 
+      table_name => "SourceTable"
+  }
+} 
+output { 
+    elasticsearch {
+      host => localhost 
+    } 
+    stdout { } 
 }
+```
 
-#Configuration Parameters
+**Important**
 
-config :<variable name>, <type of expected variable>, :required => <true if required to run>, :default => <default value of configuration>
+This is an example configuration. You must replace ```<access_key_id>``` and ```<secret_key>``` with your access key and secret key. If you have credentials saved in a credentials file, you can omit these configuration values.
 
-  # The name of the table to copy and stream through Logstash
-  config :table_name, :validate => :string, :required => true
+To run logstash type:
 
-  # Configuration for what information from the scan and streams to include in the log.
-  # keys_only will return the hash and range keys along with the values for each entry
-  # new_image will return the entire new entry and keys
-  # old_image will return the entire entry before modification and keys (NOTE: Cannot perform scan when using this option)
-  # new_and_old_images will return the old entry before modification along with the new entry and keys
-  config :view_type, :validate => ["keys_only", "new_image", "old_image", "new_and_old_images"], :required => true
+```
+bin/logstash -f logstash-dynamodb.conf
+```
 
-  # Endpoint from which the table is located. Example: dynamodb.us-east-1.amazonaws.com
-  config :endpoint, :validate => :string, :required => true
+Logstash should successfully start and begin indexing the records from your DynamoDB table.
 
-  # Endpoint from which streams should read. Example: streams.dynamodb.us-east-1.amazonaws.com
-  config :streams_endpoint, :validate => :string
+You can also change the other configuration options to match your particular use case.  
 
-  # AWS credentials access key.
-  config :aws_access_key_id, :validate => :string, :default => ""
+You can also configure the plugin to index multiple tables by adding additional ```dynamodb { }``` sections to the ```input``` section.
 
-  # AWS credentials secret access key.
-  config :aws_secret_access_key, :validate => :string, :default => ""
+**The following table shows the configuration values.**
 
-  # A flag to indicate whether or not the plugin should scan the entire table before streaming new records.
-  # Streams will only push records that are less than 24 hours old, so in order to get the entire table
-  # an initial scan must be done.
-  config :perform_scan, :validate => :boolean, :default => true
+### Setting Description
 
-  # A string that uniquely identifies the KCL checkpointer name and cloudwatch metrics name.
-  # This is used when one worker leaves a shard so that another worker knows where to start again.
-  config :checkpointer, :validate => :string, :default => "logstash_input_dynamodb_cptr"
+Settings Id |  Description
+------- | --------
+table_name | The name of the table to index. This table must exist.
+endpoint | The DynamoDB endpoint to use.  If you are running DynamoDB on your computer, use http://localhost:8000 as the endpoint.
+streams_endpoint  | The name of a checkpoint table. This does not need to exist prior to plugin activation.
+view_type | The view type of the DynamoDB stream. ("new_and_old_images", "new_image", "old_image", "keys_only" Note: these must match the settings for your table's stream configured in the DynamoDB console.)
+aws_access_key_id | Your AWS access key ID. This is optional if you have credentials saved in a credentials file. Note: If you are running DynamoDB on your computer, this ID must match the access key ID that you used to create the table. If it does not match, the Logstash plugin will fail because DynamoDB partitions data by access key ID and region.
+aws_secret_access_key | Your AWS access key ID. Your AWS access key ID. This is optional if you have credentials saved in a credentials file.
+perform_scan | A boolean flag to indicate whether or not Logstash should scan the entire table before streaming new records. Note: Set this option to false if your are restarting the Logstash plugin.
+checkpointer | A string that uniquely identifies the KCL checkpointer name and CloudWatch metrics name.  This is used when one worker leaves a shard so that another worker knows where to start again.
+publish_metrics | Boolean option to publish metrics to CloudWatch using the checkpointer name.
+perform_stream | Boolean option to not automatically stream new data into Logstash from DynamoDB streams.
+read_ops  | Number of read operations per second to perform when scanning the specified table.
+number_of_scan_threads | Number of threads to use when scanning the specified table.
+number_of_write_threads | Number of threads to write to the Logstash queue when scanning the table.
+log_format | Log transfer format. "plain" - Returns the object as a DynamoDB object. "json_drop_binary" - Translates the item format to JSON and drops any binary attributes. "json_binary_as_text" - Translates the item format to JSON and represents any binary attributes as 64-bit encoded binary strings. For more information, see the JSON Data Format topic in the DynamoDB documentation.
 
-  # Option to publish metrics to Cloudwatch using the checkpointer name.
-  config :publish_metrics, :validate => :boolean, :default => false
+### Testing the Logstash Plugin for Amazon DynamoDB
 
-  # Option to not automatically stream new data into logstash from DynamoDB streams.
-  config :perform_stream, :validate => :boolean, :default => true
+The Logstash plugin for DynamoDB starts scanning the DynamoDB table and indexing the table data when you run it. As you insert new records into the DynamoDB table, the Logstash plugin consumes the new records from DynamoDB streams to continue indexing.
 
-  # Number of read operations per second to perform when scanning the specified table.
-  config :read_ops, :validate => :number, :default => 1
+To test this, you can add items to the DynamoDB table in the AWS console, and view the output (stdout) in the command prompt window. The items are also inserted into Elasticsearch and indexed for searching.
 
-  # Number of threads to use when scanning the specified table
-  config :number_of_scan_threads, :validate => :number, :default => 1
+**To test the Logstash plugin for DynamoDB**
 
-  # Number of threads to write to the logstash queue when scanning the table
-  config :number_of_write_threads, :validate => :number, :default => 1
+Open the DynamoDB console at https://console.aws.amazon.com/dynamodb/.
 
-  # Configuation for how the logs will be transferred.
-  # plain is simply pass the message along without editing it.
-  # dynamodb will return just the data specified in the view_format in dynamodb format.
-    # For more information see: docs.aws.amazon.com/amazondynamodb/latest/developerguide/DataFormat.html
-  # json_drop_binary will return just the data specified in the view_format in JSON while not including any binary values that were present.
-  # json_binary_as_text will return just the data specified in the view_format in JSON while including binary values as base64-encoded text.
-  config :log_format, :validate => ["plain", "dynamodb", "json_drop_binary", "json_binary_as_text"], :default => "plain"
+In the list of tables, open (double-click) **SourceTable**.
 
+Choose **New Item**, add the following data, and then choose **PutItem**:
+
+Id—1
+Message—First item
+
+Repeat the previous step to add the following data items:
+
+Id—2 and Message—Second item
+Id—3 and Message—Third item
+
+Return to the command-prompt window and verify the Logstash output (it should have dumped the logstash output for each item you added to the console).
+
+**(Optional) Go back to the SourceTable in us-east-1 and do the following:**
+
+Update item 2. Set the Message to Hello world!
+Delete item 3.
+
+Go to the command-prompt window and verify the data output.
+
+You can now search the DynamoDB items in Elasticsearch. 
+
+For information about accessing and searching data in Elasticsearch, see the Elasticsearch documentation.
