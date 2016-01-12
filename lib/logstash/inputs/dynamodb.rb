@@ -182,17 +182,20 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
 
   public
   def run(logstash_queue)
-    begin
-      run_with_catch(logstash_queue)
-    rescue LogStash::ShutdownSignal
-      exit_threads
-      until @queue.empty?
-        @logger.info("Flushing rest of events in logstash queue")
-        event = @queue.pop()
-        queue_event(@parser.parse_stream(event), logstash_queue, @host)
-      end # until !@queue.empty?
-    end # begin
-  end # def run(logstash_queue)
+    $exit = false
+    run_with_catch(logstash_queue)
+  end
+
+  public
+  def stop
+    $exit = true
+    exit_threads
+    until @queue.empty?
+      @logger.info("Flushing rest of events in logstash queue")
+      event = @queue.pop()
+      queue_event(@parser.parse_stream(event), logstash_queue, @host)
+    end # until !@queue.empty?
+  end
 
   # Starts KCL app in a background thread
   # Starts parallel scan if need be in a background thread
@@ -278,12 +281,16 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
     start_table_copy_thread
 
     scan_queue = @logstash_writer.getQueue()
-    while true
-      event = scan_queue.take()
-      if event.getEntry().nil? and event.getSize() == -1
-        break
-      end # if event.isEmpty()
-      queue_event(@parser.parse_scan(event.getEntry(), event.getSize()), logstash_queue, @host)
+    while !$exit
+      if !scan_queue.empty?
+        event = scan_queue.take()
+        if event.getEntry().nil? and event.getSize() == -1
+          break
+        end # if event.isEmpty()
+        queue_event(@parser.parse_scan(event.getEntry(), event.getSize()), logstash_queue, @host)
+      else
+        sleep(0.01)
+      end
     end # while true
   end
 
@@ -292,14 +299,20 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
     @logger.info("Starting stream...")
     start_kcl_thread
 
-    while true
-      event = @queue.pop()
-      queue_event(@parser.parse_stream(event), logstash_queue, @host)
+    while !$exit
+      if !@queue.empty?
+        event = @queue.pop()
+        queue_event(@parser.parse_stream(event), logstash_queue, @host)
+      else
+        sleep(0.01)
+      end
     end # while true
   end
 
   private
   def exit_threads
+    @worker.shutdown()
+
     unless @dynamodb_scan_thread.nil?
       @dynamodb_scan_thread.exit
     end # unless @dynamodb_scan_thread.nil?

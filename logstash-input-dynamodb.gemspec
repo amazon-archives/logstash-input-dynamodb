@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'logstash-input-dynamodb'
-  s.version = '1.0.0'
+  s.version = '1.0.1'
   s.licenses = ['Apache License (2.0)']
   s.summary = "This input plugin scans a specified DynamoDB table and then reads changes to a DynamoDB table from the associated DynamoDB Stream."
   s.description = "This gem is a logstash plugin required to be installed on top of the Logstash core pipeline using $LS_HOME/bin/plugin install gemname. This gem is not a stand-alone program"
@@ -19,9 +19,11 @@ Gem::Specification.new do |s|
   s.metadata = { "logstash_plugin" => "true", "logstash_group" => "input" }
 
   # Gem dependencies
-  s.add_runtime_dependency "logstash-core", '>= 1.4.0', '< 2.0.0'
-  s.add_runtime_dependency "logstash-codec-json"
+  s.add_runtime_dependency "logstash-core", ">= 2.0.0", "< 3.0.0"
+  s.add_runtime_dependency 'logstash-codec-json'
+  s.add_runtime_dependency 'stud', '>= 0.0.22'
   s.add_runtime_dependency "activesupport-json_encoder"
+  s.add_development_dependency 'logstash-devutils', '>= 0.0.16'
   # Jar dependencies
   s.requirements << "jar 'com.amazonaws:aws-java-sdk-elasticbeanstalk', '1.10.11'"
   s.requirements << "jar 'com.amazonaws:aws-java-sdk-ses', '1.10.11' "
@@ -37,7 +39,8 @@ Gem::Specification.new do |s|
   s.requirements << "jar 'com.amazonaws:aws-java-sdk-codedeploy', '1.10.11'"
   s.requirements << "jar 'com.amazonaws:aws-java-sdk-dynamodb', '1.10.10'"
   s.requirements << "jar 'com.amazonaws:aws-java-sdk-directconnect', '1.10.11'"
-  s.requirements << "jar 'org.apache.httpcomponents:httpclient', '4.3.6'"
+  s.requirements << "jar 'org.apache.httpcomponents:httpclient', '4.4.1'"
+  s.requirements << "jar 'org.apache.httpcomponents:httpcore', '4.4.1'"
   s.requirements << "jar 'com.amazonaws:aws-java-sdk-sns', '1.10.11'"
   s.requirements << "jar 'com.amazonaws:aws-java-sdk-directory', '1.10.11'"
   s.requirements << "jar 'com.google.protobuf:protobuf-java', '2.6.1'"
@@ -95,6 +98,5 @@ Gem::Specification.new do |s|
   s.requirements << "jar 'com.amazonaws:aws-java-sdk-cloudwatch', '1.10.8'"
   s.add_runtime_dependency 'jar-dependencies'
   # Development dependencies
-  s.add_development_dependency "logstash-devutils"
   s.add_development_dependency "mocha"
 end
