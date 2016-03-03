@@ -65,13 +65,15 @@ module Logstash
           @hash_template["dynamodb"]["sequenceNumber"] = "0"
           @hash_template["dynamodb"]["sizeBytes"] = size_bytes
           @hash_template["dynamodb"]["streamViewType"] = @view_type.upcase
-
+          @hash_template["eventParser"] = "scan"
           return parse_view_type(@hash_template)
         end
 
         public
         def parse_stream(log)
-          return parse_view_type(JSON.parse(@mapper.writeValueAsString(log))["internalObject"])
+          data_hash = JSON.parse(@mapper.writeValueAsString(log))["internalObject"]
+          data_hash["eventParser"] = "stream"
+          return parse_view_type(data_hash)
         end
 
         private
