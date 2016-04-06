@@ -182,19 +182,25 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
 
   public
   def run(logstash_queue)
-    $exit = false
+    $exit = false;
+    $logstash_queue = logstash_queue
     run_with_catch(logstash_queue)
   end
 
   public
   def stop
     $exit = true
-    exit_threads
+
+    until @scan_queue.empty?
+    end
+
     until @queue.empty?
       @logger.info("Flushing rest of events in logstash queue")
       event = @queue.pop()
-      queue_event(@parser.parse_stream(event), logstash_queue, @host)
+      queue_event(@parser.parse_stream(event), $logstash_queue, @host)
     end # until !@queue.empty?
+
+    exit_threads
   end
 
   # Starts KCL app in a background thread
@@ -261,7 +267,7 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
 
     kcl_config = KCL::KinesisClientLibConfiguration.new(@checkpointer, stream_arn, @credentials, worker_id) \
       .withInitialPositionInStream(KCL::InitialPositionInStream::TRIM_HORIZON)
-		cloudwatch_client = nil
+    cloudwatch_client = nil
     if @publish_metrics
       cloudwatch_client = CloudWatch::AmazonCloudWatchClient.new(@credentials)
     else
@@ -280,10 +286,10 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
     @connector = DynamoDBBootstrap::DynamoDBBootstrapWorker.new(@dynamodb_client, @read_ops, @table_name, @number_of_scan_threads)
     start_table_copy_thread
 
-    scan_queue = @logstash_writer.getQueue()
-    while !$exit
-      if !scan_queue.empty?
-        event = scan_queue.take()
+    @scan_queue = @logstash_writer.getQueue()
+    while true
+      if !@scan_queue.empty?
+        event = @scan_queue.take()
         if event.getEntry().nil? and event.getSize() == -1
           break
         end # if event.isEmpty()
@@ -311,7 +317,9 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
 
   private
   def exit_threads
-    @worker.shutdown()
+    unless @worker.nil?
+      @worker.shutdown()
+    end # unless @worker.nil?
 
     unless @dynamodb_scan_thread.nil?
       @dynamodb_scan_thread.exit
