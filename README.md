@@ -4,6 +4,8 @@ The Logstash plugin for Amazon DynamoDB gives you a nearly real-time view of the
 
 Logstash is a data pipeline service that processes data, parses data, and then outputs it to a selected location in a selected format. Elasticsearch is a distributed, full-text search server. For more information about Logstash and Elasticsearch, go to https://www.elastic.co/products/elasticsearch.
 
+**NOTICE**: This plugin is compatible with Logstash up to version 2.4.
+
 ## The following sections walk you through the process to:
 
 1. Create a DynamoDB table and enable a new stream on the table.
@@ -179,7 +181,7 @@ perform_stream | Boolean option to not automatically stream new data into Logsta
 read_ops  | Number of read operations per second to perform when scanning the specified table.
 number_of_scan_threads | Number of threads to use when scanning the specified table.
 number_of_write_threads | Number of threads to write to the Logstash queue when scanning the table.
-log_format | Log transfer format. "plain" - Returns the object as a DynamoDB object. "json_drop_binary" - Translates the item format to JSON and drops any binary attributes. "json_binary_as_text" - Translates the item format to JSON and represents any binary attributes as 64-bit encoded binary strings. For more information, see the JSON Data Format topic in the DynamoDB documentation.
+log_format | Log transfer format. "plain" - Returns the object as a DynamoDB object. "json_drop_binary" - Translates the item format to JSON and drops any binary attributes. "json_binary_as_text" - Translates the item format to JSON and represents any binary attributes as 64-bit encoded binary strings. "extended" - Returns a parsed object, regardless of view_type. For more information, see the JSON Data Format topic in the DynamoDB documentation.
 
 ### Testing the Logstash Plugin for Amazon DynamoDB
 
