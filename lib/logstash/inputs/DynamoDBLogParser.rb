@@ -32,9 +32,10 @@ module Logstash
 
         MAX_NUMBER_OF_BYTES_FOR_NUMBER = 21;
 
-        def initialize(view_type, log_format, key_schema, region)
+        def initialize(view_type, log_format, key_schema, region, table_name)
           @view_type = view_type
           @log_format = log_format
+          @table_name = table_name
           @mapper ||= ObjectMapper.new()
           @mapper.setSerializationInclusion(JsonInclude::Include::NON_NULL)
           @mapper.addMixInAnnotations(AttributeValue, AttributeValueMixIn);
@@ -98,12 +99,26 @@ module Logstash
           if @log_format == LogStash::Inputs::DynamoDB::LF_PLAIN
             return hash.to_json
           end
+          if @log_format == LogStash::Inputs::DynamoDB::LF_EXTENDED
+            result = hash.clone
+            %w(keys oldImage newImage).each do |field|
+              unless hash["dynamodb"][field].nil?
+                result[field] = formatAttributeValueMap(hash["dynamodb"][field])
+              end
+            end
+            result.delete "dynamodb"
+            result['tableName'] = @table_name
+            return result.to_json
+          end
           case @view_type
           when LogStash::Inputs::DynamoDB::VT_KEYS_ONLY
             return parse_format(hash["dynamodb"]["keys"])
           when LogStash::Inputs::DynamoDB::VT_OLD_IMAGE
             return parse_format(hash["dynamodb"]["oldImage"])
           when LogStash::Inputs::DynamoDB::VT_NEW_IMAGE
+             if hash["eventName"] == "REMOVE"
+                return parse_format(hash["dynamodb"]["keys"])
+              end
             return parse_format(hash["dynamodb"]["newImage"]) #check new and old, dynamodb.
           end
         end
@@ -132,7 +147,7 @@ module Logstash
               keys_to_delete.push(k) # remove binary values and binary sets
               next
             end
-            hash[k] = formatAttributeValue(v.keys.first, v.values.first)
+            hash[k] = formatAttributeValue(dynamodb_key, dynamodb_value)
           end
           keys_to_delete.each {|key| hash.delete(key)}
           return hash
