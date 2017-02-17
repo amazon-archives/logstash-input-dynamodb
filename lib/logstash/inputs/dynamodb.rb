@@ -174,7 +174,7 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
     end
     region = RegionUtils.getRegionByEndpoint(@endpoint)
 
-    @parser ||= Logstash::Inputs::DynamoDB::DynamoDBLogParser.new(@view_type, @log_format, @key_schema, region)
+    @parser ||= Logstash::Inputs::DynamoDB::DynamoDBLogParser.new(@view_type, @log_format, @key_schema, region, @table_name)
 
     if @perform_stream
       setup_stream

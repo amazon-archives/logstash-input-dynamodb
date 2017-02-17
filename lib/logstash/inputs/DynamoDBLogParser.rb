@@ -32,9 +32,10 @@ module Logstash
 
         MAX_NUMBER_OF_BYTES_FOR_NUMBER = 21;
 
-        def initialize(view_type, log_format, key_schema, region)
+        def initialize(view_type, log_format, key_schema, region, table_name)
           @view_type = view_type
           @log_format = log_format
+          @table_name = table_name
           @mapper ||= ObjectMapper.new()
           @mapper.setSerializationInclusion(JsonInclude::Include::NON_NULL)
           @mapper.addMixInAnnotations(AttributeValue, AttributeValueMixIn);
@@ -106,6 +107,7 @@ module Logstash
               end
             end
             result.delete "dynamodb"
+            result['tableName'] = @table_name
             return result.to_json
           end
           case @view_type
