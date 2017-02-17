@@ -152,7 +152,7 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
     if @perform_scan and @view_type == VT_OLD_IMAGE
       raise(LogStash::ConfigurationError, "Cannot perform scan with view type: " + @view_type + " configuration")
     end
-    if @view_type == VT_ALL_IMAGES and !(@log_format == LF_PLAIN)
+    if @view_type == VT_ALL_IMAGES and ![LF_PLAIN, LF_EXTENDED].include?(@log_format)
       raise(LogStash::ConfigurationError, "Cannot show view_type: " + @view_type + ", with log_format: " + @log_format)
     end
 
