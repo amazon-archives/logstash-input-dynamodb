@@ -61,10 +61,11 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
 
   USER_AGENT = " logstash-input-dynamodb/1.0.0".freeze
 
-  LF_DYNAMODB = "dymamodb".freeze
+  LF_DYNAMODB = "dynamodb".freeze
   LF_JSON_NO_BIN = "json_drop_binary".freeze
   LF_PLAIN = "plain".freeze
   LF_JSON_BIN_AS_TEXT = "json_binary_as_text".freeze
+  LF_EXTENDED = "extended".freeze
   VT_KEYS_ONLY = "keys_only".freeze
   VT_OLD_IMAGE = "old_image".freeze
   VT_NEW_IMAGE = "new_image".freeze
@@ -124,7 +125,7 @@ class LogStash::Inputs::DynamoDB < LogStash::Inputs::Base
     # For more information see: docs.aws.amazon.com/amazondynamodb/latest/developerguide/DataFormat.html
   # json_drop_binary will return just the data specified in the view_format in JSON while not including any binary values that were present.
   # json_binary_as_text will return just the data specified in the view_format in JSON while including binary values as base64-encoded text.
-  config :log_format, :validate => [LF_PLAIN, LF_DYNAMODB, LF_JSON_NO_BIN, LF_JSON_BIN_AS_TEXT], :default => "plain"
+  config :log_format, :validate => [LF_PLAIN, LF_DYNAMODB, LF_JSON_NO_BIN, LF_JSON_BIN_AS_TEXT, LF_EXTENDED], :default => "plain"
 
   public
   def build_credentials
