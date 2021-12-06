@@ -67,6 +67,8 @@ git clone https://github.com/awslabs/logstash-input-dynamodb.git
 
 **Install the Bundler gem by typing the following:**
 
+Naviagte to the git project you just cloned and then run the following command:
+
 ```
 jruby -S gem install bundler
 ```
